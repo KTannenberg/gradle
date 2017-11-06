@@ -22,14 +22,20 @@ import org.gradle.language.nativeplatform.internal.IncludeDirectives;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DefaultSourceIncludesResolver implements SourceIncludesResolver {
     private final List<File> includePaths;
+    private final Map<String, Integer> foundIncludes;
+    private final Map<File, Map<String, Boolean>> includeRoots;
 
     public DefaultSourceIncludesResolver(List<File> includePaths) {
         this.includePaths = includePaths;
+        this.foundIncludes = new HashMap<String, Integer>();
+        this.includeRoots = new HashMap<File, Map<String, Boolean>>();
     }
 
     @Override
@@ -59,20 +65,37 @@ public class DefaultSourceIncludesResolver implements SourceIncludesResolver {
 
     private void searchForDependency(List<File> searchPath, String include, BuildableResolvedSourceIncludes dependencies) {
         for (File searchDir : searchPath) {
-            File candidate = new File(searchDir, include);
-            // TODO: SLG This isn't correct, we need to consider directories too
-            // If a source file is #include <type_trait>
-            // and includePath = [ A, B ]
-            // and /B/type_trait is the header we want.
-            // We need /A/type_trait to be recorded as a directory in case it becomes a file later.
-            if (!candidate.isDirectory()) {
-                dependencies.searched(candidate);
-            }
-            if (candidate.isFile()) {
-                dependencies.resolved(include, candidate);
+            if (searchForDependency(include, dependencies, searchDir)) {
                 return;
             }
         }
+    }
+
+    private boolean searchForDependency(String include, BuildableResolvedSourceIncludes dependencies, File searchDir) {
+        File candidate = new File(searchDir, include);
+
+        Map<String, Boolean> searchedIncludes = includeRoots.get(searchDir);
+        if (searchedIncludes == null) {
+            searchedIncludes = new HashMap<String, Boolean>();
+            includeRoots.put(searchDir, searchedIncludes);
+
+        }
+        dependencies.searched(candidate);
+        if (searchedIncludes.containsKey(include)) {
+            if (searchedIncludes.get(include)) {
+                dependencies.resolved(include, candidate);
+                return true;
+            }
+            return false;
+        }
+
+        boolean found = candidate.isFile();
+        searchedIncludes.put(include, found);
+
+        if (found) {
+            dependencies.resolved(include, candidate);
+        }
+        return found;
     }
 
     private static class BuildableResolvedSourceIncludes implements ResolvedSourceIncludes {
