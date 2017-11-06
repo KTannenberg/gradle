@@ -15,26 +15,21 @@
  */
 package org.gradle.language.nativeplatform.tasks;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.Files;
-import com.google.common.io.LineProcessor;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Incubating;
 import org.gradle.api.Task;
-import org.gradle.api.UncheckedIOException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.internal.changedetection.changes.DiscoveredInputRecorder;
 import org.gradle.api.internal.file.FileCollectionFactory;
 import org.gradle.api.internal.file.collections.DirectoryFileTreeFactory;
-import org.gradle.api.internal.file.collections.MinimalFileSet;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
@@ -62,9 +57,7 @@ import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -325,62 +318,11 @@ public abstract class AbstractNativeCompileTask extends DefaultTask {
      *
      * @since 4.3
      */
-    @Internal
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    @Optional
     public RegularFileProperty getHeaderDependenciesFile() {
         return headerDependenciesFile;
     }
 
-    /**
-     * The set of dependent headers, read from {@link #getHeaderDependenciesFile()}}.
-     *
-     * This is used for up-to-date checks only.
-     *
-     * @since 4.3
-     */
-    @Optional
-    @InputFiles
-    @PathSensitive(PathSensitivity.NONE)
-    protected FileCollection getHeaderDependencies() {
-        final File inputFile = headerDependenciesFile.getAsFile().getOrNull();
-        if (inputFile == null || !inputFile.isFile()) {
-            return null;
-        }
-
-        return getFileCollectionFactory().create(new HeaderDependencies(inputFile));
-    }
-
-    private class HeaderDependencies implements MinimalFileSet {
-        private final File inputFile;
-
-        public HeaderDependencies(File inputFile) {
-            this.inputFile = inputFile;
-        }
-
-        @Override
-        public Set<File> getFiles() {
-            try {
-                return Files.readLines(inputFile, Charsets.UTF_8, new LineProcessor<Set<File>>() {
-                    private Set<File> result = new HashSet<File>();
-
-                    @Override
-                    public boolean processLine(String line) throws IOException {
-                        result.add(new File(line));
-                        return true;
-                    }
-
-                    @Override
-                    public Set<File> getResult() {
-                        return result;
-                    }
-                });
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-
-        @Override
-        public String getDisplayName() {
-            return "Header dependencies for " + AbstractNativeCompileTask.this.toString();
-        }
-    }
 }
