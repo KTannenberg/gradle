@@ -118,6 +118,14 @@ public class GradlePomModuleDescriptorBuilder {
     }
 
     public void addDependency(PomDependencyData dep) {
+        doAddDependency(dep, dep.isOptional());
+    }
+
+    public void addOptionalDependency(PomDependencyMgt dep) {
+        doAddDependency(dep, true);
+    }
+
+    private void doAddDependency(PomDependencyMgt dep, boolean optional) {
         String scopeString = dep.getScope();
         if (scopeString == null || scopeString.length() == 0) {
             scopeString = getDefaultScope(dep);
@@ -141,8 +149,6 @@ public class GradlePomModuleDescriptorBuilder {
             && selector.getName().equals(componentIdentifier.getModule())) {
             return;
         }
-
-        boolean optional = dep.isOptional();
 
         List<Artifact> artifacts = Lists.newArrayList();
         boolean hasClassifier = dep.getClassifier() != null && dep.getClassifier().length() > 0;
@@ -250,7 +256,7 @@ public class GradlePomModuleDescriptorBuilder {
      * @param dependency Dependency
      * @return Resolved dependency version
      */
-    private String determineVersion(PomDependencyData dependency) {
+    private String determineVersion(PomDependencyMgt dependency) {
         String version = dependency.getVersion();
         version = (version == null || version.length() == 0) ? getDefaultVersion(dependency) : version;
 
@@ -283,7 +289,7 @@ public class GradlePomModuleDescriptorBuilder {
         dependencies.add(new IvyDependencyMetadata(selector, confMappings));
     }
 
-    private String getDefaultVersion(PomDependencyData dep) {
+    private String getDefaultVersion(PomDependencyMgt dep) {
         PomDependencyMgt pomDependencyMgt = findDependencyDefault(dep);
         if (pomDependencyMgt != null) {
             return pomDependencyMgt.getVersion();
@@ -291,7 +297,7 @@ public class GradlePomModuleDescriptorBuilder {
         return null;
     }
 
-    private String getDefaultScope(PomDependencyData dep) {
+    private String getDefaultScope(PomDependencyMgt dep) {
         PomDependencyMgt pomDependencyMgt = findDependencyDefault(dep);
         String result = null;
         if (pomDependencyMgt != null) {
@@ -303,7 +309,7 @@ public class GradlePomModuleDescriptorBuilder {
         return result;
     }
 
-    private List<ModuleIdentifier> getDependencyMgtExclusions(PomDependencyData dep) {
+    private List<ModuleIdentifier> getDependencyMgtExclusions(PomDependencyMgt dep) {
         PomDependencyMgt pomDependencyMgt = findDependencyDefault(dep);
         if (pomDependencyMgt != null) {
             return pomDependencyMgt.getExcludedModules();
@@ -312,7 +318,7 @@ public class GradlePomModuleDescriptorBuilder {
         return Collections.emptyList();
     }
 
-    private PomDependencyMgt findDependencyDefault(PomDependencyData dependency) {
+    private PomDependencyMgt findDependencyDefault(PomDependencyMgt dependency) {
         return pomReader.findDependencyDefaults(dependency.getId());
     }
 }

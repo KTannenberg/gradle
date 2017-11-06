@@ -77,6 +77,10 @@ public final class GradlePomModuleDescriptorParser extends AbstractModuleDescrip
         return "gradle pom parser";
     }
 
+    private boolean isBom(PomReader pomReader) {
+        return pomReader.getDependencies().isEmpty() && !pomReader.getDependencyMgt().isEmpty();
+    }
+
     protected MutableMavenModuleResolveMetadata doParseDescriptor(DescriptorParseContext parserSettings, LocallyAvailableExternalResource resource, boolean validate) throws IOException, ParseException, SAXException {
         PomReader pomReader = new PomReader(resource, moduleIdentifierFactory);
         GradlePomModuleDescriptorBuilder mdBuilder = new GradlePomModuleDescriptorBuilder(pomReader, gradleVersionSelectorScheme, mavenVersionSelectorScheme, moduleIdentifierFactory);
@@ -143,6 +147,11 @@ public final class GradlePomModuleDescriptorParser extends AbstractModuleDescrip
 
             for (PomDependencyData dependency : pomReader.getDependencies().values()) {
                 mdBuilder.addDependency(dependency);
+            }
+            if (isBom(pomReader)) {
+                for (PomDependencyMgt dependencyMgt : pomReader.getDependencyMgt().values()) {
+                    mdBuilder.addOptionalDependency(dependencyMgt);
+                }
             }
         }
     }
